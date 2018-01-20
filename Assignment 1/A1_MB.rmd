@@ -1,0 +1,334 @@
+---
+title: "A1_MB"
+author: "Mayank Badjatya"
+date: "January 29, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+#1 Set up, data import and inspection code
+```{r Set up, data import and inspection code}
+
+#1A.	Package loading, and data import. Load factors as character strings first.
+
+# Package loading.
+library(C50)
+library(scatterplot3d)
+library(caret)
+library(rminer)
+library(rmarkdown)
+library(psych)
+
+# Data import. Load factors as character strings first
+setwd("C:/Users/Mayank/Downloads")
+
+bartrider <- read.csv(file = "Assignment 1_BartRider.csv", stringsAsFactors = FALSE)
+
+# 1B Show the overall structure and summary of the input data
+
+str(bartrider)
+summary(bartrider)
+
+# 1C C.	Transform all of the character (chr) variables to factor variables. Show the overall structure and summary of the input data again
+
+bartrider$DualInc <- factor(bartrider$DualInc)
+bartrider$Gender <- factor(bartrider$Gender)
+bartrider$Language <- factor(bartrider$Language)
+bartrider$OwnRent <- factor(bartrider$OwnRent)
+bartrider$Rider <- factor(bartrider$Rider)
+
+str(bartrider)
+summary(bartrider)
+
+# 1D Retrieve, save and show the number of rows as well as the number of columns of input data.
+
+#save(file="C:/Users/Mayank/Downloads/A1_MB.rmd")
+#load(file="C:/Users/Mayank/Downloads/A1_MB.rmd")
+
+nrow(bartrider)
+ncol(bartrider)
+
+#1E.	Show the first 10 instances of input data. Also, show the last 10 instances of input data.
+
+head(bartrider, 10)
+tail(bartrider, 10)
+```
+
+#2 Code for exploring a single variable of numeric data type
+```{r code for exploring a single variable of numeric data type}
+
+# 2A A.	For each of the seven integer variables, draw variable's histogram and boxplot. Include title in each plot.
+
+hist(bartrider$Age, main = "Histogram of Age in the BartRider data set",
+     xlab = "Age")
+
+
+boxplot(bartrider$Age, main="Boxplot of Age in the BartRider data set",
+        ylab="Age")
+
+hist(bartrider$DistToWork, main = "Histogram of DistToWork in the BartRider data set",
+     xlab = "DistToWork")
+
+
+boxplot(bartrider$DistToWork, main="Boxplot of DistToWork in the BartRider data set",
+        ylab="DistToWork")
+
+hist(bartrider$Education, main = "Histogram of Education in the BartRider data set",
+     xlab = "Education")
+
+
+boxplot(bartrider$Education, main="Boxplot of Education in the BartRider data set",
+        ylab="Education")
+
+hist(bartrider$Income, main = "Histogram of Income in the BartRider data set",
+     xlab = "Income")
+
+
+boxplot(bartrider$Income, main="Boxplot of Income in the BartRider data set",
+        ylab="Income")
+
+hist(bartrider$NbrInHouseHold , main = "Histogram of NbrInHouseHold  in the BartRider data set",
+     xlab = "NbrInHouseHold ")
+
+
+boxplot(bartrider$NbrInHouseHold , main="Boxplot of NbrInHouseHold  in the BartRider data set",
+        ylab="NbrInHouseHold ")
+
+hist(bartrider$NbrInHouseholdUnder18, main = "Histogram of NbrInHouseholdUnder18 in the BartRider data set",
+     xlab = "NbrInHouseholdUnder18")
+
+
+boxplot(bartrider$NbrInHouseholdUnder18, main="Boxplot of NbrInHouseholdUnder18 in the BartRider data set",
+        ylab="NbrInHouseholdUnder18")
+
+hist(bartrider$YrsInArea, main = "Histogram of YrsInArea in the BartRider data set",
+     xlab = "YrsInArea")
+
+
+boxplot(bartrider$YrsInArea, main="Boxplot of YrsInArea in the BartRider data set",
+        ylab="YrsInArea")
+
+#2B(i).	For each of the following variables - DistToWork, NbrInHouseHold and NbrInHouseholdUnder18 : i.	Show variable mean, variance, standard deviation, quantiles and dectiles. 
+
+# variable mean, variance, standard deviation, quantiles and dectiles for DistToWork
+mean(bartrider$DistToWork)
+var(bartrider$DistToWork)
+sd(bartrider$DistToWork)
+quantile(bartrider$DistToWork)
+quantile(bartrider$DistToWork, seq(from = 0, to = 1, by = 0.10))
+
+# variable mean, variance, standard deviation, quantiles and dectiles for NbrInHouseHold
+mean(bartrider$NbrInHouseHold)
+var(bartrider$NbrInHouseHold)
+sd(bartrider$NbrInHouseHold)
+quantile(bartrider$NbrInHouseHold)
+quantile(bartrider$NbrInHouseHold, seq(from = 0, to = 1, by = 0.10))
+
+# variable mean, variance, standard deviation, quantiles and dectiles for NbrInHouseholdUnder18
+mean(bartrider$NbrInHouseholdUnder18)
+var(bartrider$NbrInHouseholdUnder18)
+sd(bartrider$NbrInHouseholdUnder18)
+quantile(bartrider$NbrInHouseholdUnder18)
+quantile(bartrider$NbrInHouseholdUnder18, seq(from = 0, to = 1, by = 0.10))
+
+# 2B(ii).	Perform min-max normalization of values. Redo the tasks in B.i on the normalized values. 
+
+#min-max normalization of DistToWork
+max.DistToWork <- max(bartrider$DistToWork)
+min.DistToWork <- min(bartrider$DistToWork)
+range.diff.DistToWork <- max.DistToWork - min.DistToWork
+normalize.DistToWork<-(bartrider$DistToWork - min.DistToWork)/range.diff.DistToWork
+mean(normalize.DistToWork)
+var(normalize.DistToWork)
+sd(normalize.DistToWork)
+quantile(normalize.DistToWork)
+quantile(normalize.DistToWork, seq(from = 0, to = 1, by = 0.10))
+
+#min-max normalization of NbrInHouseHold
+max.NbrInHouseHold <- max(bartrider$NbrInHouseHold)
+min.NbrInHouseHold <- min(bartrider$NbrInHouseHold)
+range.diff.NbrInHouseHold <- max.NbrInHouseHold - min.NbrInHouseHold
+normalize.NbrInHouseHold<-(bartrider$NbrInHouseHold - min.NbrInHouseHold)/range.diff.NbrInHouseHold
+mean(normalize.NbrInHouseHold)
+var(normalize.NbrInHouseHold)
+sd(normalize.NbrInHouseHold)
+quantile(normalize.NbrInHouseHold)
+quantile(normalize.NbrInHouseHold, seq(from = 0, to = 1, by = 0.10))
+
+#min-max normalization of NbrInHouseholdUnder18
+max.NbrInHouseholdUnder18 <- max(bartrider$NbrInHouseholdUnder18)
+min.NbrInHouseholdUnder18 <- min(bartrider$NbrInHouseholdUnder18)
+range.diff.NbrInHouseholdUnder18 <- max.NbrInHouseholdUnder18- min.NbrInHouseholdUnder18
+normalize.NbrInHouseholdUnder18<-(bartrider$NbrInHouseholdUnder18 - min.NbrInHouseholdUnder18)/range.diff.NbrInHouseholdUnder18
+mean(normalize.NbrInHouseholdUnder18)
+var(normalize.NbrInHouseholdUnder18)
+sd(normalize.NbrInHouseholdUnder18)
+quantile(normalize.NbrInHouseholdUnder18)
+quantile(normalize.NbrInHouseholdUnder18, seq(from = 0, to = 1, by = 0.10))
+
+
+```
+
+#3 Code for exploring a single variable of factor data type
+```{r code for exploring a single variable of factor data type}
+
+
+#3A.	The distribution of a factor variable - For each factor variable and each of this variable's nominal values, find out and show the percentage of instances that include the nominal value.
+
+#Percentage of the factor variable DualInc
+100*round(prop.table(table(bartrider$DualInc)), digits = 4)
+
+#Percentage of the factor variable Gender
+100*round(prop.table(table(bartrider$Gender)), digits = 4)
+
+#Percentage of the factor variable Language
+100*round(prop.table(table(bartrider$Language)), digits = 4)
+
+#Percentage of the factor variable OwnRent
+100*round(prop.table(table(bartrider$OwnRent)), digits = 4)
+
+#Percentage of the factor variable Rider
+100*round(prop.table(table(bartrider$Rider)), digits = 4)
+
+#3B.	Choose two factor variables. For each factor variable, show a barplot of the number of instances (or count) with a nominal value for each possible value. The bars should be arranged in descending order of instance count. Show a descriptive title in each plot.
+
+# Barplot for  DualInc
+barplot(sort(table(bartrider$DualInc),decreasing = TRUE), main = "Barplot of DualInc in the BartRider data set",
+        xlab = "DualInc")
+
+# Barplot for  OwnRent
+barplot(sort(table(bartrider$OwnRent),decreasing = TRUE), main = "Barplot of OwnRent in the BartRider data set",
+        xlab = "OwnRent")
+
+# 3C.	For each of the other three factor variables, retrieve and save the number of levels. 
+
+#Number of levels for Gender
+nlevels(bartrider$Gender)
+
+#Number of levels for Language
+nlevels(bartrider$Language)
+
+#Number of levels for Rider
+nlevels(bartrider$Rider)
+```
+
+#4 Code to understand relationships amongst multiple variables
+```{r code to understand relationships amongst multiple variables}
+# 4A. Use cor and pairs.panel to display correlations for all numeric variables
+cor(bartrider[c(1,2,4,6,8,9,11)])
+
+
+pairs.panels(bartrider[c(1,2,4,6,8,9,11)])
+
+#4B.	For DistToWork and Income, (i)	Show a boxplot of each variable by Rider and by Gender respectively
+
+boxplot(DistToWork~Gender, data = bartrider, main = "boxplot of DistToWork by  Gender ")
+boxplot(DistToWork~Rider, data = bartrider, main = "boxplot of DistToWork by  Rider ")
+boxplot(Income~Gender, data = bartrider, main = "boxplot of Income by  Gender ")
+boxplot(Income~Rider, data = bartrider, main = "boxplot of Income by  Rider ")
+
+#4B.	For DistToWork and Income,(ii) Use the aggregate function with summary to aggregate each variable by Rider and by Gender respectively. The output should be the six number statistics of DistToWork (and separately Income) aggregated by Rider's (and separately by Gender's) nominal values.
+
+aggregate(DistToWork~Rider, summary, data = bartrider)
+aggregate(DistToWork~Rider, summary, data = bartrider)
+aggregate(Income~Gender, summary, data = bartrider)
+aggregate(Income~Gender, summary, data = bartrider)
+
+#4C.	Draw a 3d scatter plot to show Rider values in shapes and the attributes - Gender, Income and Age along the three axes.  Include a main title for the plot and legend for the Rider shapes in the plot 
+
+scatterplot3d(bartrider$Gender,bartrider$Income, bartrider$Age, pch = as.numeric(bartrider$Rider), main = "3D scatter plot of BartRider data")
+
+legend('topright', legend = levels(bartrider$Rider),  cex = 0.8, pch = 1:2)
+```
+
+#5 Data partitioning and inspection code
+```{r Data partitioning and inspection code }
+
+# 5A.	Partition the data set for simple hold-out evaluation - 50% for training and the other 50% for testing.
+
+set.seed(100)
+inTrain<- createDataPartition(bartrider$Rider, p=0.5, list=FALSE)
+
+bartridertraining <- bartrider[ inTrain,]
+bartridertesting <- bartrider[-inTrain,]
+
+#5B.	Show the overall structure and summary of train and test sets. Show the distributions of Rider in the entire set, the train set and the test set.
+
+str(bartridertraining)
+summary(bartridertraining)
+
+str(bartridertesting)
+summary(bartridertesting)
+
+prop.table(table(bartridertraining$Rider))
+prop.table(table(bartridertesting$Rider))
+
+
+```
+
+#6 Simple decision tree training and testing
+```{r Simple decision tree training and testing}
+
+# 6A.	Train a C5.0 model using the default setting. Show information about this model and the summary of the model.  Don't need to plot the tree at this point because the tree might be too complex. Generate and compare this model's confusion matrices and classification evaluation metrics in testing and training sets.
+
+bartrtider_training1_c50 <- C5.0(Rider~., bartridertraining)
+
+bartrtider_training1_c50
+
+summary(bartrtider_training1_c50)
+
+# Confusion Matrix Testing
+
+predicted_Rider_testing1 <- predict(bartrtider_training1_c50, bartridertesting)
+
+mmetric(bartridertesting$Rider, predicted_Rider_testing1, metric="CONF")
+
+# Confusion Matrix Training
+
+predicted_Rider_training1 <- predict(bartrtider_training1_c50, bartridertraining)
+
+mmetric(bartridertraining$Rider, predicted_Rider_training1, metric="CONF")
+
+# Classification Evaluation Testing
+
+mmetric(bartridertesting$Rider, predicted_Rider_testing1, metric=c("ACC","TPR","PRECISION","F1"))
+
+# Classification Evaluation Training
+
+mmetric(bartridertraining$Rider, predicted_Rider_training1, metric=c("ACC","TPR","PRECISION","F1"))
+
+#6B.	Explore reducing the tree complexity by the lowering CF levels. In the code, select a CF level of your choice to train and test another C5.0 model.  Generate and compare this model's confusion matrices and classification evaluation metrics in testing and training sets.
+
+bartrtider_training2_c50 <- C5.0(bartridertraining[-12], bartridertraining$Rider, control = C5.0Control(CF = 0.13))
+
+bartrtider_training2_c50
+
+summary(bartrtider_training2_c50)
+
+# Confusion Matrix Testing
+
+predicted_Rider_testing2 <- predict(bartrtider_training2_c50, bartridertesting)
+
+mmetric(bartridertesting$Rider, predicted_Rider_testing2, metric="CONF")
+
+# Confusion Matrix Training
+
+predicted_Rider_training2 <- predict(bartrtider_training2_c50, bartridertraining)
+
+mmetric(bartridertraining$Rider, predicted_Rider_training2, metric="CONF")
+
+# Classification Evaluation Testing
+
+mmetric(bartridertesting$Rider, predicted_Rider_testing2, metric=c("ACC","TPR","PRECISION","F1"))
+
+# Classification Evaluation Training
+
+mmetric(bartridertraining$Rider, predicted_Rider_training2, metric=c("ACC","TPR","PRECISION","F1"))
+
+```
+
+

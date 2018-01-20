@@ -1,0 +1,382 @@
+---
+title: "Regression and Regression Tree Tutorial"
+author: "Xiao Liu"
+date: "Jan. 30, 2017"
+output: 
+  html_document:
+    number_sections: yes
+    toc: yes
+    fig_width: 15
+    fig_height: 10
+---
+# Setup and Import Insurance dataset  
+```{r Setup and data import}
+
+# Load the following packages. Install them first if necessary.
+
+library(caret)
+library(psych)
+library(rpart)
+library(rpart.plot)
+library(RWeka)
+library(rminer)
+library(matrixStats)
+library(knitr)
+
+# import data
+setwd("~/Desktop")
+insurance <- read.csv(file = "insurance.csv", stringsAsFactors = TRUE)
+# Overall inspection
+str(insurance)
+summary(insurance)
+```
+
+# Data exploration: some examples
+
+```{r Data exploration}
+# histogram of insurance expenses
+hist(insurance$expenses)
+
+# correlations
+
+# exploring relationships among features: correlation matrix
+cor(insurance[c("age", "bmi", "children", "expenses")])
+# visualizing correlations
+pairs.panels(insurance)
+
+```
+
+# Building a base explanatory model on the whole data set
+
+```{r A base explanatory model}
+ins_base_model <- lm(expenses ~ age + children + bmi + sex + smoker + region, data = insurance)
+# this is equivalent
+ins_base_model <- lm(insurance[,7] ~ ., data = insurance[,-7]) 
+
+# exam the model and performance summary
+ins_base_model
+summary(ins_base_model)
+
+```
+# Build a base predictive model and evaluation prediction performance  
+ 
+```{r Train a predictive model}
+set.seed(500)
+inTrain <- createDataPartition(y=insurance$expenses, p = 0.70, list=FALSE)
+train_target <- insurance[inTrain,7]
+test_target <- insurance[-inTrain,7]
+train_input <- insurance[inTrain,-7]
+test_input <- insurance[-inTrain,-7]
+
+#Build a model using training dataset
+
+ins_base_train_model <- lm(train_target~., data = train_input)
+ins_base_train_model
+# see more detail about the estimated beta coefficients
+summary(ins_base_model)
+summary(ins_base_train_model)
+
+```
+# predict on the test data based on the trained base model
+
+```{r Apply predictive model}
+
+predictions_base_test <- predict(ins_base_train_model, test_input)
+
+# compare the correlation between acutal and predicted expenses in test data
+summary(predictions_base_test)
+summary(test_target)
+
+# compare the correlation
+cor(predictions_base_test, test_target)
+
+# compare the correlation between actual and predicted expneses in training data
+predictions_base_train <- predict(ins_base_train_model, train_input)
+cor(predictions_base_train, train_target)
+```
+
+# Use rminer to generate model's evaluation metrics
+```{r Generate performance metrics}
+# Generating multiple prediction evaluation metrics using rminer package
+# performance of predictions on testing data 
+mmetric(test_target,predictions_base_test,c("MAE","RMSE","MAPE","RMSPE","RAE", "RRSE", "COR", "R2"))
+# performance of predictions on training data
+mmetric(train_target,predictions_base_train,c("MAE","RMSE","MAPE","RMSPE","RAE", "RRSE", "COR", "R2"))
+```
+# Regression Trees and Model Trees 
+```{r Train an rpart model}
+# regression tree using rpart
+ins_rpart_model <- rpart(train_target ~ ., data = train_input)
+?rpart
+# get basic information about the tree
+ins_rpart_model
+# get more detailed information about the tree
+summary(ins_rpart_model)
+# use the rpart.plot package to create a visualization
+# a basic decision tree diagram
+rpart.plot(ins_rpart_model, digits = 3)
+# a few adjustments to the diagram
+#The fallen.leaves parameter forces the leaf nodes to be aligned at the bottom of the plot, while the type and extra parameters affect the way the decisions and nodes are labeled
+# rpart.plot(ins_rpart_model, digits = 4, fallen.leaves = TRUE, type = 3, extra = 101)
+```
+# Evaluate rpart model
+```{r Apply and evaluate an rpart model}
+# generate predictions for the testing and training dataset
+predictions_rpart_test <- predict(ins_rpart_model, test_input)
+predictions_rpart_train <- predict(ins_rpart_model, train_input)
+# compare the distribution of predicted values vs. actual values in testing data
+summary(predictions_rpart_test)
+summary(test_target)
+# compare the correlation between actual and predicted expenses in testing data
+cor(predictions_rpart_test,test_target)
+# compare the distribution of predicted values vs. actual values in training data
+summary(predictions_rpart_train)
+summary(train_target)
+# compare the correlation
+cor(predictions_rpart_train,train_target)
+```
+# Generate prediction performance metrics using rminer package  
+```{r Generate rminer metrics}
+# Performance of predictions on test data
+mmetric(test_target,predictions_rpart_test,c("MAE","RMSE","MAPE","RMSPE","RAE", "RRSE","COR", "R2"))
+# Performance of predictions on train data
+mmetric(train_target,predictions_rpart_train,c("MAE","RMSE","MAPE","RMSPE","RAE", "RRSE","COR", "R2"))
+```
+
+# Model tree - M5P (RWeka)
+
+```{r Train an M5P Model Tree}
+WPM("list-packages", "installed")
+ins_m5p_model <- M5P(train_target ~ ., data = train_input)
+# display the tree
+ins_m5p_model
+# generate the summary of the model
+summary(ins_m5p_model)
+```
+# M5P : prediction and metric evaluation
+```{r Apply and evaluate an M5P model}
+# generate predictions for the model
+predictions_m5p_test <- predict(ins_m5p_model, test_input)
+# Generating prediction performance metrics using rminer package
+# Performance of predictions on test data
+mmetric(test_target,predictions_m5p_test,c("MAE","RMSE","MAPE","RMSPE","RAE","RRSE","COR","R2"))
+
+```
+
+# Improve lm model performance by interaction and quadratic terms
+
+```{r Improve lm model}
+# add a higher-order "age" term
+insurance$age2 <- insurance$age^2
+# add an indicator for BMI >= 30
+insurance$bmi30 <- ifelse(insurance$bmi >= 30, 1, 0)
+#Partition the dataset again
+set.seed(500)
+inTrain <- createDataPartition(y=insurance$expenses , p=0.70, list=FALSE)
+train_input <- insurance[inTrain,-7]
+test_input <- insurance[-inTrain,-7]
+# Create an improved explanatory model using interaction terms on the train data set 
+ins_improved_train_model1 <- lm(train_target ~ age + children + bmi + sex + bmi30*smoker + region, data = train_input)
+summary(ins_improved_train_model1)
+
+```
+
+# Create an improved explanatory model using both interaction and quadratic terms on the train data set 
+
+```{r Train an improved lm model}
+# add the quadratic term
+ins_improved_train_model2 <- lm(train_target ~ age + age2+ children + bmi + sex + smoker+ region, data = train_input)
+summary(ins_improved_train_model2)
+
+# add both interaction and quadratic terms
+ins_improved_train_model3 <- lm(train_target ~ age + age2 + children + bmi + sex + bmi30*smoker + region, data = train_input)
+summary(ins_improved_train_model3)
+```
+
+# Generate prediction and evaluation metrics from the improved trained lm model  
+
+```{r Apply and evaluate an improved lm model}
+# generate prediction on the testing data with the improved trained model 
+predictions_improved_test <- predict(ins_improved_train_model3, test_input)
+mmetric(test_target,predictions_improved_test,c("MAE","RMSE","MAPE","RMSPE","RAE", "RRSE","COR", "R2"))
+# generate prediction on the training data with the improved trained model 
+predictions_improved_train <- predict(ins_improved_train_model3, train_input)
+mmetric(train_target,predictions_improved_train,c("MAE","RMSE","MAPE","RMSPE","RAE", "RRSE","COR", "R2"))
+```
+# cross validation (cv) for numeric predictions
+
+a. setup cv parameters and create folds
+b. 3-fold cv of lm using lapply and anonymous function
+c. display cv results using kable; generate and display means and sds of metrics
+d. define a named function - cv_function
+e. run cv_function for 3-fold and 10-fold cross validatons of predictive models
+
+```{r set up cv parameters and create folds}
+
+# Use the original insurance data
+# Remove age2 and bmi30
+insurance$age2 <- NULL
+insurance$bmi30 <- NULL
+
+#  Set up cv parameters
+# df identifies the whole data set by its name
+# target identifies the target variable by its column index in df
+# nFolds indicates the number of folds for cv
+# seedVal carries the seed value for random sampling of instances when creating folds
+# prediction_method indicates the prediction method - e.g., lm
+# metric_list is a list of evaluation metrics that mmetric should generate
+
+df <- insurance
+target <- 7
+nFolds <- 3
+seedVal <- 500
+prediction_method <- lm
+# This is the same as above: assign("prediction_method", lm)
+metrics_list <- c("MAE","RMSE","MAPE","RMSPE","RAE","RRSE","R2")
+
+# create folds using the assigned values
+
+set.seed(seedVal)
+folds = createFolds(df[,target],nFolds)
+str(folds)
+# elements in folds: folds$Fold1 = folds[[1]], folds$Foldi = folds[[i]]
+# length of folds = nFolds
+```
+
+# cross validation using lapply and anonymous function
+
+```{r cross validation using lapply and anonymous function}
+
+# Input to lapply - folds, output returned from lapply - cv_results have the same list length - i.e., nFolds
+# Input to function(x) is x=folds[[i]]
+# For each possible value of x, execute the list of commands in {} after function(x)
+
+cv_results <- lapply(folds, function(x)
+{ 
+# data preparation:
+# vertically (i.e., row-wise) divide df using x (a fold) and -x  into test and train
+# horizontally (i.e., column-wise) divide df using target and -target into target and input columns
+
+  test_target <- df[x,target]
+  test_input <- df[x,-target]
+  
+  train_target <- df[-x,target]
+  train_input <- df[-x,-target]
+   
+  pred_model <- prediction_method(train_target~.,train_input)
+  # compare the trained linear regression model by fold
+  print(summary(pred_model))
+  
+  pred <- predict(pred_model, test_input)
+# return saves performance results in cv_results[[i]]
+  return(mmetric(test_target,pred,metrics_list))
+})
+
+cv_results
+```
+
+# Display cv performances results in a table using kable() in knitr package
+
+```{r show cv_results, means and sds using kable}
+
+# convert a list to a data frame using as.data.frame and convert this data frame to a matrix before using rowSds()
+str(as.matrix(cv_results))
+str(as.matrix(as.data.frame(cv_results)))
+cv_results_m <- as.matrix(as.data.frame(cv_results))
+
+# Generate and show Means and Sds of performance metrics over all folds
+# Need matrixStats package
+# save rowMeans and rowSds results in matrices which are the required input format for the use of colnames()
+
+cv_mean<- as.matrix(rowMeans(cv_results_m))
+cv_sd <- as.matrix(rowSds(cv_results_m))
+
+# ?rowSds, ?colnames and cbind to learn more about rowSds, colnames and cbind
+colnames(cv_mean) <- "Mean"
+colnames(cv_sd) <- "Sd"
+
+# Combine and show cv_results and Means and Sds
+cv_all <- cbind(cv_results_m, cv_mean, cv_sd)
+
+# t(cv_all) transposes cv_all
+kable(t(cv_all),digits=2)
+```
+
+# cross validation using a named function
+
+```{r define cv_function}
+
+cv_function <- function(df, target, nFolds, seedVal, prediction_method, metrics_list)
+{
+  # create folds
+  set.seed(seedVal)
+  folds = createFolds(df[,target],nFolds) 
+  # perform cross validation
+  cv_results <- lapply(folds, function(x)
+  { 
+    test_target <- df[x,target]
+    test_input  <- df[x,-target]
+
+    train_target <- df[-x,target]
+    train_input <- df[-x,-target]
+
+    prediction_model <- prediction_method(train_target~.,train_input) 
+    pred<- predict(prediction_model,test_input)
+    return(mmetric(test_target,pred,metrics_list))
+  })
+  # generate means and sds and show cv results, means and sds using kable
+  cv_results_m <- as.matrix(as.data.frame(cv_results))
+  cv_mean<- as.matrix(rowMeans(cv_results_m))
+  cv_sd <- as.matrix(rowSds(cv_results_m))
+  colnames(cv_mean) <- "Mean"
+  colnames(cv_sd) <- "Sd"
+  cv_all <- cbind(cv_results_m, cv_mean, cv_sd)
+  kable(t(cv_all),digits=2)
+}
+```
+
+# 3-fold and 10 fold cross validations of lm using cv_function
+
+```{r run cv_function with lm}
+
+# df <- insurance
+# target <- 7
+# nFolds <- 3
+# seedVal <- 500
+# metrics_list <- c("MAE","RMSE","MAPE","RMSPE","RAE","RRSE","R2")
+# assign("prediction_method", lm)
+
+### call cv_function for 3-fold and 10-fold cvs of lm
+cv_function(df, target, 3, seedVal, prediction_method, metrics_list)
+cv_function(df, target, 10, seedVal, prediction_method, metrics_list)
+# The metric means are similar between 3-fold and 10-fold cvs. 
+# Hence, 3-fold cv is sufficient to estimate the means of performance metrics.
+# The sds of metrics increase from 3-fold to 10-fold cv.
+# Hence, increase nFolds in cv help assess the grow of sds with nFolds.
+
+```
+
+# 3-fold and 10 fold cross validations of rpart using cv_function
+
+```{r run cv_function with rpart}
+
+# assign("prediction_method", rpart)
+
+cv_function(df, target, 3, seedVal, rpart, metrics_list)
+cv_function(df, target, 10, seedVal, rpart, metrics_list)
+# Due to non-linear relationships, rpart models improve over the baseline lm models on the basis of each metric
+# The means of rpart models' metrics are slightly different between 10-fold and 3-fold cvs. Higher nFolds might be necessary for cv of rpart models.
+```
+
+# 3-fold and 10 fold cross validations of M5P using cv_function
+
+```{r run cv_function with M5P}
+
+# assign("prediction_method", M5P)
+
+cv_function(df, target, 3, seedVal, M5P, metrics_list)
+cv_function(df, target, 10, seedVal, M5P, metrics_list)
+# M5P models further improve over rpart models. The performance is similar to lm models improved with quadratic and interaction terms
+### end of tutorial
+```
+

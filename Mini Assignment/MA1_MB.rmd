@@ -1,0 +1,327 @@
+---
+title: "Titanic Data Exploration in RMarkdown"
+author: "Mayank Badjatya"
+date: "January 15, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 1 Set up, data import, inspections and cleaning
+
+```{r Set up, data import, inspections and cleaning}
+
+library(psych)
+library(scatterplot3d)
+library(lattice)
+library(MASS)
+
+setwd("C:/Users/Mayank/Downloads")
+
+inputfile <- "C:/Users/Mayank/Downloads/titanic.train.csv"
+
+titanic <- read.csv(file = inputfile, stringsAsFactors = FALSE)
+
+titanic <- read.csv(file = "titanic.train.csv", stringsAsFactors = FALSE)
+
+titanic <- titanic[c(-1,-4,-9)]
+
+titanic$Survived <- factor(titanic$Survived)
+
+titanic$Sex <- factor(titanic$Sex)
+
+titanic$Pclass <- factor(titanic$Pclass)
+
+titanic$Cabin <- factor(titanic$Cabin)
+
+titanic$Embarked <- factor(titanic$Embarked)
+
+titanic <- titanic[-which(is.na(titanic$Age)), ]
+
+levels(titanic$Embarked)[1] <- "missing"
+
+str(titanic)
+
+summary(titanic)
+
+```
+
+
+# 2 Understanding numeric variables, one variable at a time
+
+```{r Understanding numeric variables, one variable at a time}
+
+
+summary(titanic$Pclass)
+
+summary(titanic[c("Sex", "Age")])
+
+# obtain the mean, median, max, min and range of a numeric variable
+
+mean(titanic$Age)
+median(titanic$Age)
+range(titanic$Age)
+
+# calculate the difference of the range
+
+max.Age <- max(titanic$Age)
+min.Age <- min(titanic$Age)
+min.Age
+max.Age
+
+range.diff.Age <- max.Age - min.Age
+range.diff.Age
+
+# min-max normalization of first observation's Age to a value between zero and 1
+
+titanic$Age[1]
+
+(titanic$Age[1] - min.Age)/range.diff.Age
+
+# quantile to calculate the five-number summary for Age
+
+quantile(titanic$Age)
+
+# the 1st percentile and the 99th percentile
+
+quantile(titanic$Age, probs = c(0.01, 0.99))
+
+# quantiles and dectiles 
+
+quantile(titanic$Age, seq(from = 0, to = 1, by = 0.20))
+
+quantile(titanic$Age, seq(from = 0, to = 1, by = 0.10))
+
+# boxplot of a numeric variable
+
+boxplot(titanic$Age, main="Boxplot of Age in the titanic data set",
+        ylab="Age")
+
+# practice quantile for another variable - SibSp
+
+quantile(titanic$SibSp)
+
+# the 1st percentile and the 99th percentile
+
+quantile(titanic$SibSp, probs = c(0.01, 0.99))
+
+# quintiles and dectiles 
+
+quantile(titanic$SibSp, seq(from = 0, to = 1, by = 0.20))
+
+quantile(titanic$SibSp, seq(from = 0, to = 1, by = 0.10))
+
+# boxplot of a numeric variable
+
+boxplot(titanic$SibSp, main="Boxplot of Sibsp in the titanic data set",
+        ylab="Sibsp")
+
+
+# scatter plot of a numeric variable. It becomes too busy for a large number of observations
+
+plot(titanic$SibSp)
+
+# histograms of a numeric variable
+
+hist(titanic$SibSp, main = "Histogram of Sibsp in the titanic data set",
+     xlab = "Sibsp")
+
+### For a right skewed distribution, the mean is typically greater than the median
+
+hist(titanic$Age, main = "Histogram of Age in the titanic data set",
+     xlab = "Age")
+
+hist(titanic$Fare, main = "Histogram of Fare in the titanic data set",
+     xlab = "Fare")
+
+hist(titanic$Parch, main = "Histogram of Parch  in the titanic data set",
+     xlab = "Parch")
+
+# variance and standard deviation of a numeric varaible
+
+var(titanic$Age)
+sd(titanic$Age)
+
+var(titanic$SibSp)
+sd(titanic$SibSp)
+
+```
+
+
+
+#  Exploring factor variables, one variable at a time
+
+```{r Exploring factor variables, one variable at a time}
+
+is.factor(titanic$Survived)
+
+summary(titanic$Survived)
+
+nlevels(titanic$Survived)
+
+str(titanic$Survived)
+
+# How many of observations have a factor value?
+
+plot(titanic$Survived)
+
+plot(titanic$Survived, main = "Plot of Survived in the titanic data set",
+     xlab = "Survived")
+
+Survived.table <- table(titanic$Survived)
+
+Survived.table
+
+str(Survived.table)
+
+barplot(Survived.table, main = "Barplot of Survived in the titanic data set",
+        xlab = "Survived")
+
+# compute table proportions
+
+prop.table(Survived.table)
+
+Survived.prop <- prop.table(table(titanic$Survived))
+
+Survived.prop 
+
+# round decimals 
+
+round(Survived.prop, digits = 2)
+
+options(digits = 2)
+
+prop.table(Survived.prop)
+
+```
+
+#  Understand relationships of multiple variables
+```{r  Understand relationships of multiple variables}
+
+# cor,  boxplot, 2D scatter plot - plot, 3D scatter plot
+
+# scatter plot: two numeric variables
+
+#plot(titanic[,5:6])
+plot(titanic$SibSp, titanic$Parch)
+
+# Generate correlation coefficients of two numeric variables in a 2x2 matrix
+
+cov(titanic[,c(5,6)])
+var(titanic[,c(5,6)])
+var(titanic[,5])
+sd(titanic[,5])
+var(titanic[5])
+sd(titanic[,2])
+cor(titanic[c("SibSp", "Parch")])
+cor(titanic[5:6])
+cor(titanic[,5:6])
+
+# Generate the correlation matrix of all numeric variables
+
+cor(titanic[4:7])
+
+# Generate 2D scatter plots and correlation coefficients
+
+pairs(titanic[4:7])
+
+#new pairs.panels command to show relationships amongst "Survived", "Pclass", "Sex", "Age", "SibSp", "Parch", "Fare", "Embarked"
+
+pairs.panels(titanic[-8])
+
+## Examine relationships between numeric variables and factors
+
+# boxplot groups values of a numeric variable based on the values of a factor
+boxplot(Age~Survived, data = titanic)
+boxplot(Parch~Survived, data = titanic)
+boxplot(SibSp~Survived, data = titanic)
+boxplot(Fare~Survived, data = titanic)
+
+# The aggregate function
+
+
+aggregate(SibSp~Survived, summary, data = titanic)
+aggregate(Parch~Survived, summary, data = titanic)
+
+# scatter plot of numeric values and factor values
+
+plot(titanic$Survived)
+plot(titanic$Age)
+plot(titanic$Age,titanic$Survived)
+
+plot(titanic$SibSp,titanic$Parch, col=titanic$Survived, pch = as.numeric((titanic$Survived)))
+
+with(titanic, plot(titanic$SibSp,titanic$Parch, col=Survived, pch = as.numeric(Survived)))
+
+with(titanic, plot(titanic$SibSp,titanic$Parch, col=Survived, pch = as.numeric(Survived), 
+                   main = "2d scatter plot of titanic data", sub = "SibSp vs Parch"))
+
+
+palette()
+
+legend('topright', legend = levels(titanic$Survived),  col = 1:2, cex = 0.8, pch = 1:2)
+
+# Generate 3D scatterplot
+
+scatterplot3d(titanic$Sex,titanic$Age,titanic$SibSp, pch = as.numeric(titanic$Survived), main = "3D scatter plot of titanic data")
+
+legend('topright', legend = levels(titanic$Survived),  cex = 0.8, pch = 1:2)
+
+scatterplot3d(titanic$Fare,titanic$Pclass,titanic$Sex, pch = as.numeric(titanic$Survived), main = "3D scatter plot of titanic data")
+
+legend('topright', legend = levels(titanic$Survived),  cex = 0.8, pch = 1:2)
+
+titanicf <- subset(titanic, Sex == "female")
+summary(titanicf)
+titanicm <- subset(titanic, Sex == "male")
+summary(titanicm)
+
+plot(titanicm$Age,titanicm$SibSp, pch = as.numeric(titanicm$Survived), main = "2D scatter plot of males' SibSp and Age")
+
+legend('topright', legend = levels(titanicf$Survived),  cex = 0.8, pch = 1:2)
+
+plot(titanicf$Fare,titanicf$Pclass, pch = as.numeric(titanicf$Survived), main = "2D scatter plot of titanic females' Pclass vs Fare")
+
+legend('topright', legend = levels(titanicf$Survived),  cex = 0.8, pch = 1:2)
+
+# Parallel plot and parallel coordinate plot to show relationships between numeric variables and factors
+
+# Required libraries - lattice and MASS
+
+parallelplot(~titanic[-1] | Survived, data = titanic, var.label = TRUE)
+
+parallelplot(~titanic[4:7] | Survived, data = titanic, var.label = TRUE)
+
+parallelplot(~titanic[4:5] | Survived, data = titanic, var.label = TRUE)
+
+parallelplot(~titanic[c(4,6)] | Survived, data = titanic, var.label = TRUE)
+
+parallelplot(~titanic[c(6,7)] | Survived, data = titanic, var.label = TRUE)
+
+parallelplot(~titanic[c(5,6)] | Survived, data = titanic, var.label = TRUE)
+
+palette()
+
+# legend() that works for other plots cannot display legend in the parallelplot() above
+
+# Generate a parallelcoordinate plot
+
+parcoord(titanic[4:7], col = titanic$Survived, var.label = TRUE)
+
+parcoord(titanic[4:5], col = titanic$Survived, var.label = TRUE)
+
+parcoord(titanic[c(4,6)], col = titanic$Survived, var.label = TRUE)
+
+parcoord(titanic[c(4,7)], col = titanic$Survived, var.label = TRUE)
+
+parcoord(titanic[c(5,6)], col = titanic$Survived, var.label = TRUE)
+
+palette()
+
+legend('topright', legend = levels(titanic$Survived),  col = 1:2, cex = 0.8, pch = 1:2)
+
+##### end of Titanic Data Exploration in RMarkdown
+
+```

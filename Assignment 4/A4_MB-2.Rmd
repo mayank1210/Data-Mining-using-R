@@ -1,0 +1,250 @@
+---
+title: "A4_MB"
+author: "Mayank Badjatya"
+date: "March 13, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# 1  Understand Walmart_2015_visits_sample6.csv using correlation analysis (pairs.panels from psych), decision trees (C5.0) and clustering 
+```{r  Understand Walmart_2015_visits_sample6.csv using correlation analysis (pairs.panels from psych), decision trees (C5.0) and clustering }
+
+#1A. Package loading, and Walmart_2015_visits_sample6.csv import and transformation. Show the overall structure of the input file. Transform factor variables, and show summary of the input data file. Use pairs.panels to exam variable distributions and correlations.
+
+#Package Loading
+library(C50)
+library(knitr)
+library(RWeka)
+library(rpart)
+library(rpart.plot)
+library(psych)
+library(rminer)
+library(matrixStats)
+library(caret)
+library(arules)
+
+# import data
+ setwd("C:/Users/Mayank/Downloads")
+walmart <- read.csv(file = "Walmart_2015_visits_sample6.csv", stringsAsFactors = TRUE)
+walmart$trip_type<- as.factor(walmart$trip_type)
+
+str(walmart)
+summary(walmart)
+
+pairs.panels(walmart)
+
+#1 B.	Build a descriptive C5.0 decision tree using the default setting and the whole data set (trip_type is the target  variable). Show summary of the model to see the tree and the in-sample confusion matrix.
+walmart_model <- C5.0(walmart[-1],walmart$trip_type)
+walmart_model
+summary(walmart_model)
+
+#1C.	Building and show clusterings to better understand visits in clusters of similar visits 
+
+#i.	Use SimpleKMeans for all tasks. Remove trip_type from input for building clusters. Show the standard deviations in addition to the centroids of the clusters.
+
+walmart_clustering <- SimpleKMeans(walmart[, -1], Weka_control( V=TRUE))
+walmart_clustering
+table(predict(walmart_clustering), walmart$trip_type)
+
+#ii.	Generate and show 6 clusters using the default (i.e. random) initial cluster assignment and the default distance function (Euclidean). 
+
+nClusters<-6
+walmart_clustering <- SimpleKMeans(walmart[, -1], Weka_control(N = nClusters, A="weka.core.EuclideanDistance", V=TRUE))
+walmart_clustering
+table(predict(walmart_clustering), walmart$trip_type)
+
+#iii.	Keep the number of clusters to be 6 and the distance function to be Euclidean, change the initial cluster assignment method to the Kmeans++ method. Regenerate and show the clustering 
+
+walmart_clustering <- SimpleKMeans(walmart[, -1], Weka_control(N = nClusters, A="weka.core.EuclideanDistance", init = 1, V=TRUE))
+walmart_clustering
+table(predict(walmart_clustering), walmart$trip_type)
+
+#iv.	Keep the number of clusters to be 6 and the initial cluster assignment method to be the Kmeans++ method. the distance function to "weka.core.ManhattanDistance". Regenerate and show the clustering 
+
+walmart_clustering <- SimpleKMeans(walmart[, -1], Weka_control(N = nClusters, A="weka.core.ManhattanDistance", init = 1, V=TRUE))
+walmart_clustering
+table(predict(walmart_clustering), walmart$trip_type)
+
+#v.	Choose your own distance function and initial cluster assignment method, increase the number of clusters to 9.  Regenerate and show the clustering.
+
+nClusters<-9
+walmart_clustering <- SimpleKMeans(walmart[, -1], Weka_control(N = nClusters, A="weka.core.ManhattanDistance", init = 1, V=TRUE))
+walmart_clustering
+table(predict(walmart_clustering), walmart$trip_type)
+
+#vi.	Use the same distance function and initial assignment method selected for task C.v of this chunk, change the number of clusters to 3.  Regenerate and show the clustering. 
+
+nClusters<-3
+walmart_clustering <- SimpleKMeans(walmart[, -1], Weka_control(N = nClusters, A="weka.core.ManhattanDistance", init = 1, V=TRUE))
+walmart_clustering
+table(predict(walmart_clustering), walmart$trip_type)
+```
+
+#2 KNN-based trip_type classification using IBk of RWeka
+```{r KNN-based trip_type classification using IBk of RWeka}
+
+#2A.	Define a few cross-validation functions that allows for changes in IBk's parameters - K, X, I and/or F. 
+
+IBk_default <- function(df, target, nFolds, seedVal, metrics_list)
+{
+# create folds using the assigned values
+
+set.seed(seedVal)
+folds = createFolds(df[,target],nFolds)
+
+
+
+cv_results <- lapply(folds, function(x)
+{ 
+
+
+  test_target <- df[x,target]
+  test_input <- df[x,-target]
+  
+  train_target <- df[-x,target]
+  train_input <- df[-x,-target]
+  pred_model <- IBk(train_target ~ .,data = train_input)  
+  pred_test <- predict(pred_model, test_input)
+  return(mmetric(test_target,pred_test,metrics_list))
+})
+
+
+cv_results_m <- as.matrix(as.data.frame(cv_results))
+
+cv_mean<- as.matrix(rowMeans(cv_results_m))
+cv_sd <- as.matrix(rowSds(cv_results_m))
+colnames(cv_mean) <- "Mean"
+colnames(cv_sd) <- "Sd"
+
+cv_all <- cbind(cv_mean, cv_sd)
+kable(t(cv_all),digits=3)
+}
+
+
+IBk_improved <- function(df, target, nFolds, seedVal, metrics_list, k, i)
+{
+# create folds using the assigned values
+
+set.seed(seedVal)
+folds = createFolds(df[,target],nFolds)
+
+# The lapply loop
+
+cv_results <- lapply(folds, function(x)
+{ 
+# data preparation:
+
+  test_target <- df[x,target]
+  test_input <- df[x,-target]
+  
+  train_target <- df[-x,target]
+  train_input <- df[-x,-target]
+  pred_model <- IBk(train_target ~ .,data = train_input,control = Weka_control(K=k, I=i, X= TRUE))  
+  pred_test <- predict(pred_model, test_input)
+  return(mmetric(test_target,pred_test,metrics_list))
+})
+
+# convert a list to a data frame using as.data.frame and convert this data frame to a matrix before using rowSds()
+cv_results_m <- as.matrix(as.data.frame(cv_results))
+
+cv_mean<- as.matrix(rowMeans(cv_results_m))
+cv_sd <- as.matrix(rowSds(cv_results_m))
+colnames(cv_mean) <- "Mean"
+colnames(cv_sd) <- "Sd"
+
+# Combine and show cv_results and Means and Sds
+cv_all <- cbind( cv_mean, cv_sd)
+kable(t(cv_all),digits=3)
+}
+
+
+IBk_improved2 <- function(df, target, nFolds, seedVal, metrics_list, k, f)
+{
+# create folds using the assigned values
+
+set.seed(seedVal)
+folds = createFolds(df[,target],nFolds)
+
+# The lapply loop
+
+cv_results <- lapply(folds, function(x)
+{ 
+# data preparation:
+
+  test_target <- df[x,target]
+  test_input <- df[x,-target]
+  
+  train_target <- df[-x,target]
+  train_input <- df[-x,-target]
+  pred_model <- IBk(train_target ~ .,data = train_input,control = Weka_control(K=k, F=f, X= TRUE))  
+  pred_test <- predict(pred_model, test_input)
+  return(mmetric(test_target,pred_test,metrics_list))
+})
+
+# convert a list to a data frame using as.data.frame and convert this data frame to a matrix before using rowSds()
+cv_results_m <- as.matrix(as.data.frame(cv_results))
+
+cv_mean<- as.matrix(rowMeans(cv_results_m))
+cv_sd <- as.matrix(rowSds(cv_results_m))
+colnames(cv_mean) <- "Mean"
+colnames(cv_sd) <- "Sd"
+
+# Combine and show cv_results and Means and Sds
+cv_all <- cbind( cv_mean, cv_sd)
+kable(t(cv_all),digits=3)
+}
+
+#2B.	Call the function or one of the functions defined in A of this chunk with the default parameter setting of IBk to set a base line out-of-sample performance of KNN-based trip_type classification. Set the number of folds to 5 or more.
+
+df <- walmart
+target <- 1
+nFolds<- 5
+seedVal <- 500
+metrics_list <- c("ACC","TPR","PRECISION","F1")
+
+IBk_improved(df, target, nFolds, seedVal, metrics_list,60, TRUE)
+
+#2C.	Performance improvement
+
+IBk_improved2(df, target, nFolds, seedVal, metrics_list,60, TRUE)
+
+IBk_improved2(df[,c(-6,-8,-9)], target, nFolds, seedVal, metrics_list,60, TRUE)
+
+```
+
+#3 Read and mine Walmart dept baskets in the long file format
+```{r Read and mine Walmart dept baskets in the long file format}
+
+#3A.	Import Walmart_2015_dept_baskets.csv file using the following read.transactions() with the "single" format (for long format) and save it in a sparse matrix 
+
+Dept_baskets <- read.transactions("Walmart_2015_dept_baskets.csv", format="single", sep = ",", cols=c("VisitNumber","DepartmentDescription"))
+
+#3B.	Inspect the departments in the first 5 transactions.
+
+inspect(Dept_baskets[1:5])
+
+#3C.	Use the itemFrequencyPlot 
+
+#i.	View the frequency (in percentage, i.e., the relative format) of all of the item (i.e. dept) sets with support = 0.12 or higher
+itemFrequencyPlot(Dept_baskets, support = 0.12)
+
+#ii.	Plot the most frequent 8 items in the descending order of transaction frequency in percentage.
+
+itemFrequencyPlot(Dept_baskets, topN = 8)
+
+#3D.	Use the apriori command to generate about 50 to 100 association rules from the input data.
+
+Dept_basketsrules <- apriori(Dept_baskets, parameter = list(support =
+                          0.040, confidence = 0.5, minlen = 1))
+
+Dept_basketsrules
+
+inspect(sort(Dept_basketsrules, by="lift"))
+```
+
+
+

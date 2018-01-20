@@ -1,0 +1,287 @@
+---
+title: "A2_MB"
+author: "Mayank Badjatya"
+date: "February 13, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+#1.Set up, data import, data exploration, data partitioning and inspection code
+
+```{r Set up, data import, data exploration, data partitioning and inspection code}
+
+#1A.	Package loading, and data import.  Show the overall structure and summary of the input data.  Other than Name, all other non-numeric fields should be factor variables.
+
+# Importing Libraries
+library(rmarkdown)
+library(rpart)
+library(RWeka)
+library(caret)
+library(rminer)
+library(matrixStats)
+library(knitr)
+
+#Setting work directory and importing data
+
+setwd("C:/Users/Mayank/Downloads")
+sales <- read.csv(file = "sales_filtered.csv", stringsAsFactors = FALSE)
+
+str(sales)
+summary(sales)
+
+#Conversion to factor variables
+sales$Platform <- factor(sales$Platform)
+sales$Genre <- factor(sales$Genre)
+sales$Rating <- factor(sales$Rating)
+
+str(sales)
+
+#1 B.	Include commands to explore numeric variables' distributions and their correlations, as well as commands to explore factor variables and their relationships to the target variable. 
+
+mean(sales$Global_Sales)
+var(sales$Global_Sales)
+sd(sales$Global_Sales)
+quantile(sales$Global_Sales)
+quantile(sales$Global_Sales, seq(from=0, to=1, by=0.10))
+hist(sales$Global_Sales, main = "Histogram of Global_Sales ", xlab = "Global_Sales")
+
+mean(sales$Critic_Score)
+var(sales$Critic_Score)
+sd(sales$Critic_Score)
+quantile(sales$Critic_Score)
+quantile(sales$Critic_Score, seq(from=0, to=1, by=0.10))
+hist(sales$Critic_Score, main = "Histogram of Critic_Score ", xlab = "Critic_Score")
+
+mean(sales$Critic_Count)
+var(sales$Critic_Count)
+sd(sales$Critic_Count)
+quantile(sales$Critic_Count)
+quantile(sales$Critic_Count, seq(from=0, to=1, by=0.10))
+hist(sales$Critic_Count, main = "Histogram of Critic_Count ", xlab = "Critic_Count")
+
+mean(sales$User_Score)
+var(sales$User_Score)
+sd(sales$User_Score)
+quantile(sales$User_Score)
+quantile(sales$User_Score, seq(from=0, to=1, by=0.10))
+hist(sales$User_Score, main = "Histogram of User_Score ", xlab = "User_Score")
+
+mean(sales$User_Count)
+var(sales$User_Count)
+sd(sales$User_Count)
+quantile(sales$User_Count)
+quantile(sales$User_Count, seq(from=0, to=1, by=0.10))
+hist(sales$User_Count, main = "Histogram of User_Count ", xlab = "User_Count")
+
+cor(sales[c(4,5,6,7,8)])
+
+
+boxplot(Global_Sales~Platform, data = sales, main = "boxplot of Global Sales by  Platform ")
+
+Platform.table <- table(sales$Platform)
+barplot(sort((Platform.table),decreasing=TRUE), main = "Distr. of Platform ",
+        xlab = "Platform")
+
+boxplot(Global_Sales~Genre, data = sales, main = "boxplot of Global Sales by  Platform ")
+
+Genre.table <- table(sales$Genre)
+barplot(sort((Genre.table),decreasing=TRUE), main = "Distr. of Genre ",
+        xlab = "Genre")
+
+
+boxplot(Global_Sales~Rating, data = sales, main = "boxplot of Global Sales by  Platform ")
+
+Rating.table <- table(sales$Rating)
+barplot(sort((Rating.table),decreasing=TRUE), main = "Distr. of Rating ",
+        xlab = "Rating")
+
+
+#1D.	Use the whole data set without the Name field, build a linear regression model. Show the summary of the model to understand the significance and coefficients of the predictors in the model and the overall model fit. 
+
+sales_lm_model<-lm(formula = sales[, 4] ~ ., data = sales[c(-1, -4)])
+summary(sales_lm_model)
+
+#1F.	Partition the data set for simple hold-out evaluation - 70% for training and the other 30% for testing
+set.seed(500)
+inTrain <- createDataPartition(y=sales$Global_Sales, p = 0.70, list=FALSE)
+
+train_target <- sales[inTrain,4]
+test_target <- sales[-inTrain,4]
+train_input <- sales[inTrain,c(-1,-4)]
+test_input <- sales[-inTrain,c(-1,-4)]
+
+
+#1G.Show the overall summaries of train and test sets. 
+summary(train_target)
+summary(test_target)
+```
+
+#2. Simple lm, rpart and M5P model training and testing
+```{r Simple lm, rpart and M5P model training and testing}
+
+#2 A.	Train three models using lm, rpart, and M5P. Use the default settings of these methods throughout this assignment. 
+
+sales_base_train_model <- lm(train_target~., data = train_input)
+sales_base_train_model
+summary(sales_base_train_model)
+
+sales_rpart_model <- rpart(train_target ~ ., data = train_input)
+sales_rpart_model
+summary(sales_rpart_model)
+
+WPM("list-packages", "installed")
+
+sales_m5p_model <- M5P(train_target ~ ., data = train_input)
+sales_m5p_model
+summary(sales_m5p_model)
+
+#2B.	Generate and this model's explanatory evaluation metrics and predictive error metrics in both the testing and training sets.
+
+# Metrices for lm
+
+predictions_base_train <- predict(sales_base_train_model, train_input)
+
+mmetric(train_target,predictions_base_train,c("MAE","RMSE","MAPE","RMSPE","RAE", "RRSE", "COR", "R2"))
+
+predictions_base_test <- predict(sales_base_train_model, test_input)
+
+mmetric(test_target,predictions_base_test,c("MAE","RMSE","MAPE","RMSPE","RAE", "RRSE", "COR", "R2"))
+
+# Metrices for rpart
+
+predictions_base_train <- predict(sales_rpart_model, train_input)
+
+mmetric(train_target,predictions_base_train,c("MAE","RMSE","MAPE","RMSPE","RAE", "RRSE", "COR", "R2"))
+
+predictions_base_test <- predict(sales_rpart_model, test_input)
+
+mmetric(test_target,predictions_base_test,c("MAE","RMSE","MAPE","RMSPE","RAE", "RRSE", "COR", "R2"))
+
+#Metrices of M5P
+
+
+predictions_base_train <- predict(sales_m5p_model, train_input)
+
+mmetric(train_target,predictions_base_train,c("MAE","RMSE","MAPE","RMSPE","RAE", "RRSE", "COR", "R2"))
+
+predictions_base_test <- predict(sales_m5p_model, test_input)
+
+mmetric(test_target,predictions_base_test,c("MAE","RMSE","MAPE","RMSPE","RAE", "RRSE", "COR", "R2"))
+
+```
+
+#3. Cross-validation of simple lm, rpart, and M5P models
+```{r Cross-validation of simple lm, rpart, and M5P models}
+
+#3A.	Define a named function for cross-validation of numeric prediction models that generates a table of the model fit and error metrics used in Week 4 tutorials for each fold along with the means and standard deviations of the metrics over all folds.
+
+df <- sales[,-1]
+target <- 4
+nFolds <- 10
+seedVal <- 500
+metrics_list <- c("MAE","RMSE","MAPE","RMSPE","RAE","RRSE","R2")
+
+cv_function <- function(df, target, nFolds, seedVal, prediction_method, metrics_list)
+{
+  # create folds
+  set.seed(seedVal)
+  folds = createFolds(df[,target],nFolds) 
+  # perform cross validation
+  cv_results <- lapply(folds, function(x)
+  { 
+    test_target <- df[x,target]
+    test_input  <- df[x,-target]
+
+    train_target <- df[-x,target]
+    train_input <- df[-x,-target]
+
+    prediction_model <- prediction_method(train_target~.,train_input) 
+    pred<- predict(prediction_model,test_input)
+    return(mmetric(test_target,pred,metrics_list))
+  })
+  # generate means and sds 
+  cv_results_m <- as.matrix(as.data.frame(cv_results))
+  cv_mean<- as.matrix(rowMeans(cv_results_m))
+  cv_sd <- as.matrix(rowSds(cv_results_m))
+  colnames(cv_mean) <- "Mean"
+  colnames(cv_sd) <- "Sd"
+  cv_all <- cbind(cv_results_m, cv_mean, cv_sd)
+  kable(t(cv_all),digits=2)
+}
+
+#3B.	Call the function in 3.A to generate 10-fold cross validation results of the simple lm, rpart and M5P models. 
+
+
+prediction_method <- lm
+cv_function(df, target, nFolds, seedVal, prediction_method, metrics_list)
+
+prediction_method <- rpart
+cv_function(df, target, nFolds, seedVal, prediction_method, metrics_list)
+
+prediction_method <- M5P
+cv_function(df, target, nFolds, seedVal, prediction_method, metrics_list)
+```
+
+#4.Improve the models with the quadratic term of User_Count
+```{r Improve the models with the quadratic term of User_Count}
+
+#4 A.	Create and add the quadratic term of User_Count, e.g., User_Count_Squared, to the predictors for the target variable.
+
+sales$User_Count2 <- sales$User_Count^2
+
+#4 B.	Build a lm model with User_Count_Squared included. Show the summary of this lm model
+sales_lm_model2<-lm(formula = sales[, 4] ~ ., data = sales[c(-1, -4)])
+summary(sales_lm_model2)
+
+
+#4 D.	Call the cross validation function defined for 3.A, to generate 10-fold cross validation results of the simple lm, rpart and M5P models with User_Count_Squared included
+
+df <- sales[,-1]
+
+prediction_method <- lm
+cv_function(df, target, nFolds, seedVal, prediction_method, metrics_list)
+
+prediction_method <- rpart
+cv_function(df, target, nFolds, seedVal, prediction_method, metrics_list)
+
+prediction_method <- M5P
+cv_function(df, target, nFolds, seedVal, prediction_method, metrics_list)
+
+```
+
+#5. Improve the models with the log term of User_Count
+```{r Improve the models with the log term of User_Count}
+
+sales$User_Count2<- NULL
+
+#5A.	Create and add the natural log transformation of User_Count, e.g., log_User_Count, to the predictors for the target variable.
+
+sales$log_User_Count <- log(sales$User_Count)
+str(sales)
+
+#5B. B.	Build a lm model with log_User_Count included and User_Count excluded. Show the summary of this lm model
+
+sales_lm_model3<-lm(formula = sales[, 4] ~ ., data = sales[c(-1, -4,-8)])
+
+summary(sales_lm_model3)
+
+#5D.	Call the cross validation function defined for 3.A, to generate 10-fold cross validation results of the simple lm, rpart and M5P models with log_User_Count included and User_Count excluded.
+
+df <- sales[,c(-1, -8)]
+
+
+prediction_method <- lm
+cv_function(df, target, nFolds, seedVal, prediction_method, metrics_list)
+
+prediction_method <- rpart
+cv_function(df, target, nFolds, seedVal, prediction_method, metrics_list)
+
+prediction_method <- M5P
+cv_function(df, target, nFolds, seedVal, prediction_method, metrics_list)
+```
+
+
